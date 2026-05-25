@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from collections.abc import Iterable
+from pathlib import Path
 
 UNCHECKED = re.compile(r"^\s*[-*+]\s+\[ \]\s+")
 CHECKED = re.compile(r"^\s*[-*+]\s+\[[xX]\]\s+")
+MARKDOWN_SUFFIXES = {".md", ".markdown", ".mdown"}
 
 
-def read_text(path: str) -> str:
+def read_text(path: Path | str) -> str:
     if path == "-":
         return sys.stdin.read()
-    with open(path, "r", encoding="utf-8") as handle:
-        return handle.read()
+    return Path(path).read_text(encoding="utf-8")
 
 
 def stats(text: str) -> tuple[int, int]:
@@ -27,27 +29,78 @@ def stats(text: str) -> tuple[int, int]:
     return done, todo
 
 
+def iter_markdown_files(paths: list[str]) -> list[Path | str]:
+    if not paths:
+        return ["-"]
+
+    files: list[Path | str] = []
+    for raw in paths:
+        if raw == "-":
+            files.append(raw)
+            continue
+        path = Path(raw)
+        if path.is_dir():
+            for child in sorted(path.rglob("*")):
+                if child.is_file() and child.suffix.lower() in MARKDOWN_SUFFIXES:
+                    files.append(child)
+        else:
+            files.append(path)
+    return files
+
+
+def summarize(paths: list[str]) -> dict[str, object]:
+    files = []
+    done = 0
+    todo = 0
+
+    for path in iter_markdown_files(paths):
+        text = read_text(path)
+        file_done, file_todo = stats(text)
+        total = file_done + file_todo
+        done += file_done
+        todo += file_todo
+        files.append(
+            {
+                "path": str(path),
+                "done": file_done,
+                "todo": file_todo,
+                "total": total,
+                "percent": 0.0 if total == 0 else round((file_done / total) * 100, 2),
+            }
+        )
+
+    total = done + todo
+    return {
+        "done": done,
+        "todo": todo,
+        "total": total,
+        "percent": 0.0 if total == 0 else round((done / total) * 100, 2),
+        "files": files,
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="mdcheckx", description="Markdown checklist progress reporter CLI")
-    parser.add_argument("path", nargs="?", default="-", help="Markdown file path (or - for stdin)")
+    parser.add_argument("paths", nargs="*", help="Markdown file(s), dirs, or - for stdin")
     parser.add_argument("--json", action="store_true", help="print JSON output")
+    parser.add_argument("--per-file", action="store_true", help="print each file's stats")
     return parser
 
 
 def main(argv: Iterable[str] | None = None) -> int:
     args = build_parser().parse_args(list(argv) if argv is not None else None)
     try:
-        text = read_text(args.path)
-        done, todo = stats(text)
-        total = done + todo
-        pct = 0.0 if total == 0 else round((done / total) * 100, 2)
+        data = summarize(args.paths)
         if args.json:
-            print(f'{{"done":{done},"todo":{todo},"total":{total},"percent":{pct}}}')
+            print(json.dumps(data, separators=(",", ":"), ensure_ascii=False))
         else:
-            print(f"done: {done}")
-            print(f"todo: {todo}")
-            print(f"total: {total}")
-            print(f"percent: {pct}%")
+            print(f"done: {data['done']}")
+            print(f"todo: {data['todo']}")
+            print(f"total: {data['total']}")
+            print(f"percent: {data['percent']}%")
+            if args.per_file:
+                for item in data["files"]:
+                    print(f"{item['path']}: {item['done']}/{item['total']} ({item['percent']}%)")
         return 0
     except OSError as exc:
         print(f"error: {exc}", file=sys.stderr)

@@ -46,3 +46,32 @@ def test_reads_stdin() -> None:
 
     assert result.returncode == 0
     assert "percent: 100.0%" in result.stdout
+
+
+def test_walks_directory_and_prints_per_file(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "a.md").write_text("- [x] ship\n", encoding="utf-8")
+    (docs / "b.markdown").write_text("- [ ] wait\n- [ ] review\n", encoding="utf-8")
+    (docs / "ignore.txt").write_text("- [x] skip\n", encoding="utf-8")
+
+    result = run_cli(str(docs), "--per-file")
+
+    assert result.returncode == 0
+    assert "done: 1" in result.stdout
+    assert "todo: 2" in result.stdout
+    assert "a.md: 1/1 (100.0%)" in result.stdout
+    assert "b.markdown: 0/2 (0.0%)" in result.stdout
+
+
+def test_json_includes_file_details(tmp_path: Path) -> None:
+    first = tmp_path / "one.md"
+    second = tmp_path / "two.md"
+    first.write_text("- [x] done\n", encoding="utf-8")
+    second.write_text("- [ ] todo\n", encoding="utf-8")
+
+    result = run_cli(str(first), str(second), "--json")
+
+    assert result.returncode == 0
+    assert '"files":[' in result.stdout
+    assert '"path":"' in result.stdout
