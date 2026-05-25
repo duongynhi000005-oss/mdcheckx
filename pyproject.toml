@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mdcheckx"
+version = "0.1.0"
+description = "Markdown checklist progress reporter CLI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "duongynhi000005-oss"}]
+
+[project.urls]
+Homepage = "https://github.com/duongynhi000005-oss/mdcheckx"
+Repository = "https://github.com/duongynhi000005-oss/mdcheckx"
+Issues = "https://github.com/duongynhi000005-oss/mdcheckx/issues"
+
+[project.scripts]
+mdcheckx = "mdcheckx.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mdcheckx"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
