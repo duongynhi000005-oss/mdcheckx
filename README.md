@@ -16,6 +16,7 @@ mdcheckx notes.md --json
 mdcheckx docs/ --per-file
 mdcheckx plan.md notes.md --json
 mdcheckx - < notes.md
+mdcheckx docs/ --fail-under 80
 ```
 
 ## Output
@@ -24,6 +25,7 @@ mdcheckx - < notes.md
 - `todo` = unchecked boxes
 - `percent` = done / total
 - `files` = per-file stats in JSON mode
+- `--fail-under` = CI gate; exits 2 below threshold
 
 ## Development
 

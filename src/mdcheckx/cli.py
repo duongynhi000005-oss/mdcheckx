@@ -84,6 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("paths", nargs="*", help="Markdown file(s), dirs, or - for stdin")
     parser.add_argument("--json", action="store_true", help="print JSON output")
     parser.add_argument("--per-file", action="store_true", help="print each file's stats")
+    parser.add_argument("--fail-under", type=float, default=None, metavar="PCT", help="exit 2 if overall percent is below PCT")
     return parser
 
 
@@ -101,6 +102,8 @@ def main(argv: Iterable[str] | None = None) -> int:
             if args.per_file:
                 for item in data["files"]:
                     print(f"{item['path']}: {item['done']}/{item['total']} ({item['percent']}%)")
+        if args.fail_under is not None and data["percent"] < args.fail_under:
+            return 2
         return 0
     except OSError as exc:
         print(f"error: {exc}", file=sys.stderr)

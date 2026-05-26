@@ -75,3 +75,22 @@ def test_json_includes_file_details(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert '"files":[' in result.stdout
     assert '"path":"' in result.stdout
+
+
+def test_fail_under_exits_nonzero(tmp_path: Path) -> None:
+    doc = tmp_path / "todo.md"
+    doc.write_text("- [ ] wait\n", encoding="utf-8")
+
+    result = run_cli(str(doc), "--fail-under", "50")
+
+    assert result.returncode == 2
+    assert "percent: 0.0%" in result.stdout
+
+
+def test_fail_under_passes_when_threshold_met(tmp_path: Path) -> None:
+    doc = tmp_path / "todo.md"
+    doc.write_text("- [x] done\n- [ ] wait\n", encoding="utf-8")
+
+    result = run_cli(str(doc), "--fail-under", "50")
+
+    assert result.returncode == 0
